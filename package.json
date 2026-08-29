@@ -1,0 +1,12 @@
+{
+  "name": "stremio-autoplay-addon",
+  "version": "1.0.0",
+  "description": "Minimal auto-play stream addon for Stremio",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "stremio-addon-sdk": "^1.6.10"
+  }
+}
