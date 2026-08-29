@@ -18,3 +18,4 @@ The addon looks for a text file containing one direct video link per line.
    https://example.com/video1.mp4
    https://example.com/video2.mkv
    https://example.com/video3.m3u8
+https://stremio-autoplay-addon.onrender.com/
