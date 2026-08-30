@@ -1,0 +1,13 @@
+{
+  "name": "stremio-autoplay-addon",
+  "version": "4.0.0",
+  "description": "MyTrakt with permanent Firebase database",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "stremio-addon-sdk": "^1.6.10",
+    "express": "^4.18.2"
+  }
+}
