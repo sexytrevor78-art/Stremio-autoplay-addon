@@ -151,3 +151,12 @@ app.get('/configure', (req, res) => {
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; margin: 0; }
                 .container {
+// =====================================================================
+// 7. MOUNT THE STREMIO ADDON SDK
+// =====================================================================
+app.use(getRouter(builder.getInterface()));
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+    console.log(`🚀 MyTrakt (Permanent) running on port ${PORT}`);
+});
