@@ -1,0 +1,6 @@
+# Example links.txt
+
+# Put one direct video URL per line. Example:
+# https://example.com/video1.mp4
+# https://example.com/video2.mp4
+
