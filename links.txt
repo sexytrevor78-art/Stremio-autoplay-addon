@@ -1,0 +1,6 @@
+# Example links.txt
+
+# Put one direct video URL per line. Example:
+https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
+https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4
+
