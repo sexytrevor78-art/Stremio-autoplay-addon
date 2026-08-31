@@ -9,7 +9,9 @@ const app = express();
 // - Otherwise, the addon falls back to links.txt mode (one direct URL per line) as before.
 
 const LINKS_URL = process.env.LINKS_URL || 'https://raw.githubusercontent.com/sexytrevor78-art/Stremio-autoplay-addon/main/links.txt';
-const META_IDS = (process.env.META_IDS && process.env.META_IDS.split(',').map(s => s.trim()).filter(Boolean)) || ['tmdb:1399','tmdb:2734'];
+const META_IDS_RAW = process.env.META_IDS || '';
+// Normalize META_IDS to lowercase to allow case-insensitive matching (accept TMDB, tmdb, Tmdb, etc.)
+const META_IDS = (META_IDS_RAW && META_IDS_RAW.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) || ['tmdb:1399','tmdb:2734'];
 
 async function getLinks() {
   try {
@@ -26,7 +28,7 @@ async function getLinks() {
 
 const builder = new addonBuilder({
   id: 'community.stremio.autoplay-series',
-  version: '1.1.0',
+  version: '1.1.1',
   name: 'Autoplay Series',
   description: 'Expose TMDB series IDs or a text file of links for Stremio Next Up/autoplay',
   behaviorHints: { configurable: false },
@@ -40,6 +42,7 @@ builder.defineCatalogHandler(async (args) => {
 
   // If META_IDS mode
   if (META_IDS && META_IDS.length > 0) {
+    // Expose IDs in their normalized (lowercase) form so matching is consistent
     const metas = META_IDS.map(id => ({ id, type: 'series' }));
     return { metas };
   }
@@ -52,14 +55,16 @@ builder.defineCatalogHandler(async (args) => {
 builder.defineMetaHandler(async (args) => {
   console.log('[META] requested', args);
 
+  const reqId = (args.id || '').toLowerCase();
+
   // If requested meta is one of the META_IDS, return a minimal meta with the same id.
-  if (META_IDS && META_IDS.includes(args.id)) {
+  if (META_IDS && META_IDS.includes(reqId)) {
     // Return minimal meta; Stremio core will often fetch richer metadata from TMDB for known ids.
-    return { meta: { id: args.id, type: 'series' } };
+    return { meta: { id: reqId, type: 'series' } };
   }
 
   // Links.txt mode
-  if (args.id === 'autoplay-series') {
+  if (reqId === 'autoplay-series') {
     const links = await getLinks();
     const episodes = links.map((link, idx) => ({
       id: `autoplay-ep-${idx + 1}`,
@@ -89,14 +94,15 @@ builder.defineMetaHandler(async (args) => {
 builder.defineStreamHandler(async (args) => {
   console.log('[STREAM] requested', args);
 
+  const reqId = (args.id || '').toLowerCase();
+
   // If requested id is one of META_IDS, return empty streams so other addons can respond.
-  if (META_IDS && META_IDS.includes(args.id)) {
+  if (META_IDS && META_IDS.includes(reqId)) {
     return { streams: [] };
   }
 
   // Links mode: map autoplay-ep-N to the URL from links.txt
-  const { id } = args;
-  const match = id && id.match(/^autoplay-ep-(\d+)$/);
+  const match = reqId.match(/^autoplay-ep-(\d+)$/);
   if (!match) return { streams: [] };
   const epIndex = parseInt(match[1], 10) - 1;
   const links = await getLinks();
