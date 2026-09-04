@@ -65,4 +65,4 @@ npm start
 
 - Ensure the links are direct playable URLs. Some hosts block range requests or CORS which can cause playback issues in Stremio.
 - If an episode doesn't play, try hosting the file on a different raw/static host (GitHub raw, a CDN, or direct file host).
-https://stremio-autoplay-addon.onrender.com/manifest.json
+https://stremio-autoplay-addon.onrender.com/manifest.json download in stremio only 
