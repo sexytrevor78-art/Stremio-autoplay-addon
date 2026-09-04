@@ -10,6 +10,7 @@ const app = express();
 
 const LINKS_URL = process.env.LINKS_URL || 'https://raw.githubusercontent.com/sexytrevor78-art/Stremio-autoplay-addon/main/links.txt';
 const META_IDS_RAW = process.env.META_IDS || '';
+const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
 // Normalize META_IDS to lowercase to allow case-insensitive matching (accept TMDB, tmdb, Tmdb, etc.)
 const META_IDS = (META_IDS_RAW && META_IDS_RAW.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)) || ['tmdb:1399','tmdb:2734'];
 
@@ -26,11 +27,32 @@ async function getLinks() {
   }
 }
 
+// Fetch TMDB metadata for a given TMDB ID
+async function getTmdbMeta(tmdbId) {
+  if (!TMDB_API_KEY) {
+    console.warn('[TMDB] No API key set. Set TMDB_API_KEY environment variable to fetch metadata.');
+    return null;
+  }
+
+  try {
+    const response = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${TMDB_API_KEY}`);
+    if (!response.ok) {
+      console.error('[TMDB] API error:', response.status);
+      return null;
+    }
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error('[TMDB] Error fetching metadata:', err.message || err);
+    return null;
+  }
+}
+
 const builder = new addonBuilder({
   id: 'community.stremio.autoplay-series',
-  version: '1.1.1',
+  version: '1.2.0',
   name: 'Autoplay Series',
-  description: 'Expose TMDB series IDs or a text file of links for Stremio Next Up/autoplay',
+  description: 'Expose TMDB series IDs with real metadata or a text file of links for Stremio Next Up/autoplay',
   behaviorHints: { configurable: false },
   resources: ['catalog', 'meta', 'stream'],
   types: ['series'],
@@ -57,9 +79,43 @@ builder.defineMetaHandler(async (args) => {
 
   const reqId = (args.id || '').toLowerCase();
 
-  // If requested meta is one of the META_IDS, return a minimal meta with the same id.
+  // If requested meta is one of the META_IDS, fetch REAL TMDB metadata
   if (META_IDS && META_IDS.includes(reqId)) {
-    // Return minimal meta; Stremio core will often fetch richer metadata from TMDB for known ids.
+    const tmdbId = reqId.replace('tmdb:', ''); // Extract the numeric ID
+    const tmdbData = await getTmdbMeta(tmdbId);
+
+    if (tmdbData) {
+      // Build episodes array if available
+      const episodes = tmdbData.seasons ? 
+        tmdbData.seasons
+          .filter(s => s.season_number > 0) // Skip season 0 (specials)
+          .flatMap(season => 
+            Array.from({ length: season.episode_count }, (_, i) => ({
+              id: `${reqId}-s${season.season_number}e${i + 1}`,
+              season: season.season_number,
+              episode: i + 1,
+              name: `Season ${season.season_number} Episode ${i + 1}`,
+              poster: season.poster_path ? `https://image.tmdb.org/t/p/w500${season.poster_path}` : undefined
+            }))
+          )
+        : [];
+
+      return {
+        meta: {
+          id: reqId,
+          type: 'series',
+          name: tmdbData.name || 'Unknown',
+          poster: tmdbData.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}` : 'https://via.placeholder.com/400x600.png?text=No+Poster',
+          description: tmdbData.overview || 'No description available',
+          genres: tmdbData.genres?.map(g => g.name) || [],
+          releaseInfo: tmdbData.first_air_date?.split('-')[0] || 'Unknown',
+          episodes: episodes.length > 0 ? episodes : undefined
+        }
+      };
+    }
+
+    // Fallback if TMDB fetch fails
+    console.log('[META] TMDB fetch failed, returning minimal meta');
     return { meta: { id: reqId, type: 'series' } };
   }
 
@@ -114,7 +170,7 @@ builder.defineStreamHandler(async (args) => {
 
 // Simple informational root page
 app.get('/', (req, res) => {
-  const mode = (META_IDS && META_IDS.length > 0) ? `META_IDS mode: ${META_IDS.join(',')}` : `links mode (${LINKS_URL})`;
+  const mode = (META_IDS && META_IDS.length > 0) ? `META_IDS mode: ${META_IDS.join(',')}${TMDB_API_KEY ? ' (with TMDB metadata)' : ' (no TMDB_API_KEY set)'}` : `links mode (${LINKS_URL})`;
   res.send(`<h1>Autoplay Addon</h1><p>Mode: ${mode}</p><p>Manifest: <a href="/manifest.json">/manifest.json</a></p>`);
 });
 
